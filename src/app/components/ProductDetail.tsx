@@ -1,0 +1,319 @@
+import { useEffect, useState, useRef } from "react";
+import { X, Star, ChevronLeft, ChevronRight, Sparkles, Copy, Check } from "lucide-react";
+import Slider from "react-slick";
+import { ImageWithFallback } from "./figma/ImageWithFallback";
+import {
+  getProductReviews,
+  getSimilarProducts,
+  createReview,
+  type Product,
+  type Review,
+} from "../../api/client";
+
+interface ProductDetailProps {
+  product: Product;
+  onClose: () => void;
+  onProductClick: (product: Product) => void;
+}
+
+export function ProductDetail({ product, onClose, onProductClick }: ProductDetailProps) {
+  const [reviews, setReviews]         = useState<Review[]>([]);
+  const [similar, setSimilar]         = useState<Product[]>([]);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewDesc, setReviewDesc]   = useState("");
+  const [reviewRating, setReviewRating] = useState(0);
+  const [aiLabel, setAiLabel]         = useState<"Buy" | "Not Buy" | null>(null);
+  const [labelOverride, setLabelOverride] = useState<"Buy" | "Not Buy" | "">("");
+  const [submitting, setSubmitting]   = useState(false);
+  const [copiedUrl, setCopiedUrl]     = useState<string | null>(null);
+  const sliderRef = useRef<Slider | null>(null);
+
+  useEffect(() => {
+    getProductReviews(product.product_id)
+      .then((r) => setReviews(r.reviews))
+      .catch(() => setReviews([]));
+
+    getSimilarProducts(product.product_id)
+      .then((r) => setSimilar(r.products))
+      .catch(() => setSimilar([]));
+  }, [product.product_id]);
+
+  const handleSubmitReview = async () => {
+    if (!reviewTitle || !reviewDesc || reviewRating === 0) return;
+    setSubmitting(true);
+    try {
+      const saved = await createReview(product.product_id, {
+        title: reviewTitle,
+        description: reviewDesc,
+        rating: reviewRating,
+        label_override: labelOverride || undefined,
+      });
+      setAiLabel(saved.ai_label);
+      setReviews((prev) => [...prev, saved]);
+      setReviewTitle("");
+      setReviewDesc("");
+      setReviewRating(0);
+      setLabelOverride("");
+    } catch (err) {
+      console.error("Failed to submit review", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const copyUrl = (url: string) => {
+    navigator.clipboard.writeText(`http://localhost:5000${url}`).catch(() => {});
+    setCopiedUrl(url);
+    setTimeout(() => setCopiedUrl(null), 2000);
+  };
+
+  const sliderSettings = {
+    dots: false,
+    infinite: false,
+    speed: 500,
+    slidesToShow: 4,
+    slidesToScroll: 1,
+    arrows: false,
+    responsive: [
+      { breakpoint: 1024, settings: { slidesToShow: 3 } },
+      { breakpoint: 640,  settings: { slidesToShow: 2 } },
+    ],
+  };
+
+  return (
+    <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+      <button
+        onClick={onClose}
+        className="fixed top-4 right-4 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 z-10"
+      >
+        <X className="w-6 h-6" />
+      </button>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* ── Product header ── */}
+        <div className="grid md:grid-cols-2 gap-12 mb-16">
+          <div className="aspect-square bg-[#FCE4EC] rounded-lg overflow-hidden">
+            <ImageWithFallback
+              src={product.image_url || ""}
+              alt={product.product_name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <p className="text-sm text-gray-500 uppercase tracking-wide mb-2">{product.brand_name}</p>
+            <h1 className="text-3xl text-gray-900 mb-4">{product.product_name}</h1>
+
+            <div className="flex items-center gap-2 mb-6">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-5 h-5 ${
+                    i < Math.floor(product.avg_rating)
+                      ? "fill-gray-900 text-gray-900"
+                      : "fill-gray-200 text-gray-200"
+                  }`}
+                />
+              ))}
+              <span className="text-sm text-gray-600">({product.review_count} reviews)</span>
+            </div>
+
+            {product.price > 0 && (
+              <p className="text-3xl text-gray-900 mb-6">${product.price.toFixed(2)}</p>
+            )}
+
+            <p className="text-gray-600 mb-8">{product.description || "No description available."}</p>
+
+            <button className="w-full bg-gray-900 text-white py-4 rounded-lg hover:bg-gray-800 transition-colors mb-4">
+              Add to Cart
+            </button>
+            <button className="w-full border border-gray-300 text-gray-900 py-4 rounded-lg hover:bg-gray-50 transition-colors">
+              Add to Wishlist
+            </button>
+          </div>
+        </div>
+
+        {/* ── Similar products ── */}
+        {similar.length > 0 && (
+          <div className="mb-16">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl text-gray-900">Similar Items You May Like</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => sliderRef.current?.slickPrev()}
+                  className="p-2 border border-gray-300 rounded-full hover:bg-gray-50"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => sliderRef.current?.slickNext()}
+                  className="p-2 border border-gray-300 rounded-full hover:bg-gray-50"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <Slider ref={sliderRef} {...sliderSettings}>
+              {similar.map((p) => (
+                <div key={p.product_id} className="px-2">
+                  <div
+                    onClick={() => onProductClick(p)}
+                    className="cursor-pointer bg-white rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+                  >
+                    <div className="aspect-square bg-[#FCE4EC] overflow-hidden">
+                      <ImageWithFallback
+                        src={p.image_url || ""}
+                        alt={p.product_name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="p-3">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{p.brand_name}</p>
+                      <h3 className="text-sm text-gray-900 mb-1 line-clamp-2">{p.product_name}</h3>
+                      {p.price > 0 && <p className="text-gray-900">${p.price.toFixed(2)}</p>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </Slider>
+          </div>
+        )}
+
+        {/* ── Review form ── */}
+        <div className="bg-white border border-gray-200 rounded-lg p-8 mb-12">
+          <h2 className="text-2xl text-gray-900 mb-6">Write a Review</h2>
+
+          <div className="space-y-6">
+            {/* Rating */}
+            <div>
+              <label className="block text-sm text-gray-700 mb-2">Rating</label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setReviewRating(star)}
+                    className="hover:scale-110 transition-transform"
+                  >
+                    <Star
+                      className={`w-8 h-8 ${
+                        star <= reviewRating
+                          ? "fill-gray-900 text-gray-900"
+                          : "fill-gray-200 text-gray-200"
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Title */}
+            <div>
+              <label className="block text-sm text-gray-700 mb-2">Review Title</label>
+              <input
+                type="text"
+                value={reviewTitle}
+                onChange={(e) => setReviewTitle(e.target.value)}
+                placeholder="Summarize your experience"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm text-gray-700 mb-2">Review Description</label>
+              <textarea
+                value={reviewDesc}
+                onChange={(e) => setReviewDesc(e.target.value)}
+                placeholder="Tell us about your experience with this product"
+                rows={5}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+              />
+            </div>
+
+            {/* AI label override */}
+            <div className="bg-[#FCE4EC] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-5 h-5 text-gray-900" />
+                <span className="text-sm text-gray-700">
+                  After submitting, the AI will predict whether you recommend this product.
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-gray-700">Override prediction (optional):</label>
+                <select
+                  value={labelOverride}
+                  onChange={(e) => setLabelOverride(e.target.value as "" | "Buy" | "Not Buy")}
+                  className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+                >
+                  <option value="">Use AI prediction</option>
+                  <option value="Buy">Recommend Buying</option>
+                  <option value="Not Buy">Do Not Recommend</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSubmitReview}
+              disabled={submitting || !reviewTitle || !reviewDesc || reviewRating === 0}
+              className="w-full bg-gray-900 text-white py-4 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? "Submitting…" : "Submit Review"}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Existing reviews ── */}
+        {reviews.length > 0 && (
+          <div>
+            <h2 className="text-2xl text-gray-900 mb-6">Reviews ({reviews.length})</h2>
+            <div className="space-y-4">
+              {reviews.map((r) => (
+                <div key={r.review_id} className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-4 h-4 ${
+                          i < r.rating ? "fill-gray-900 text-gray-900" : "fill-gray-300 text-gray-300"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-1">{r.title}</h4>
+                  <p className="text-sm text-gray-600 mb-3">{r.description}</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span
+                      className={`inline-block text-xs px-2 py-1 rounded ${
+                        r.final_label === "Buy"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {r.final_label === "Buy" ? "Recommends" : "Does Not Recommend"}
+                    </span>
+                    {r.overridden && (
+                      <span className="text-xs text-gray-500">
+                        (AI predicted: {r.ai_label})
+                      </span>
+                    )}
+                    <button
+                      onClick={() => copyUrl(r.review_url)}
+                      className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800"
+                    >
+                      {copiedUrl === r.review_url ? (
+                        <><Check className="w-3 h-3" /> Copied</>
+                      ) : (
+                        <><Copy className="w-3 h-3" /> Copy review URL</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
