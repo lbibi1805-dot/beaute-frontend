@@ -7,12 +7,16 @@ const BASE = "http://localhost:5000/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     ...init,
   });
   const body = await res.json();
   if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`);
   return body as T;
+}
+
+function authHeaders(token: string): HeadersInit {
+  return { Authorization: `Bearer ${token}` };
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -103,4 +107,60 @@ export async function createReview(productId: string, body: CreateReviewBody): P
 
 export async function getReview(reviewId: string): Promise<Review> {
   return request(`/reviews/${reviewId}`);
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+export interface AuthInfo {
+  token: string;
+  role: "admin" | "customer";
+  expires_at: string;
+}
+
+export async function loginUser(username: string, password: string): Promise<AuthInfo> {
+  return request("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
+
+export interface AnalyticsOverview {
+  total_reviews: number;
+  buy_count: number;
+  not_buy_count: number;
+  buy_rate_percent: number;
+  time_window_days: number;
+  limit: number;
+}
+
+export interface BrandStat {
+  brand_name: string;
+  total_reviews: number;
+  buy_count: number;
+  buy_rate_percent: number;
+}
+
+export async function getAnalyticsOverview(token: string, limit = 100, days = 30): Promise<AnalyticsOverview> {
+  return request(`/admin/analytics/overview?limit=${limit}&days=${days}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export async function getAnalyticsBrands(token: string, limit = 10, minReviews = 5): Promise<{ brands: BrandStat[] }> {
+  return request(`/admin/analytics/brands?limit=${limit}&min_reviews=${minReviews}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export async function deleteReview(reviewId: string, token: string): Promise<void> {
+  const res = await fetch(`${BASE}/admin/reviews/${reviewId}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.error ?? `HTTP ${res.status}`);
+  }
 }

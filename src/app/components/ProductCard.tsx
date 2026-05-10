@@ -29,7 +29,7 @@ export function ProductCard({ product, onClick }: ProductCardProps) {
 
       <div className="p-4">
         <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{product.brand_name}</p>
-        <h3 className="text-sm text-gray-900 mb-2 line-clamp-2">{product.product_name}</h3>
+        <h3 className="text-sm font-medium text-gray-900 mb-2 line-clamp-2">{product.product_title || product.product_name}</h3>
 
         <div className="flex items-center gap-1 mb-2">
           {[...Array(5)].map((_, i) => (

@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from "react";
-import { X, Star, ChevronLeft, ChevronRight, Sparkles, Copy, Check } from "lucide-react";
+import { X, Star, ChevronLeft, ChevronRight, Sparkles, Copy, Check, ShoppingCart } from "lucide-react";
 import Slider from "react-slick";
-import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { ImageWithFallback } from "./figma/ImageWithFallback.tsx";
+import { useCart } from "../../context/CartContext.tsx";
 import {
   getProductReviews,
   getSimilarProducts,
@@ -17,6 +18,7 @@ interface ProductDetailProps {
 }
 
 export function ProductDetail({ product, onClose, onProductClick }: ProductDetailProps) {
+  const { addItem } = useCart();
   const [reviews, setReviews]         = useState<Review[]>([]);
   const [similar, setSimilar]         = useState<Product[]>([]);
   const [reviewTitle, setReviewTitle] = useState("");
@@ -124,11 +126,12 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
 
             <p className="text-gray-600 mb-8">{product.description || "No description available."}</p>
 
-            <button className="w-full bg-gray-900 text-white py-4 rounded-lg hover:bg-gray-800 transition-colors mb-4">
+            <button
+              onClick={() => addItem(product)}
+              className="w-full bg-gray-900 text-white py-4 rounded-lg hover:bg-gray-800 transition-colors mb-4 flex items-center justify-center gap-2"
+            >
+              <ShoppingCart className="w-5 h-5" />
               Add to Cart
-            </button>
-            <button className="w-full border border-gray-300 text-gray-900 py-4 rounded-lg hover:bg-gray-50 transition-colors">
-              Add to Wishlist
             </button>
           </div>
         </div>
@@ -170,8 +173,14 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
                     </div>
                     <div className="p-3">
                       <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{p.brand_name}</p>
-                      <h3 className="text-sm text-gray-900 mb-1 line-clamp-2">{p.product_name}</h3>
-                      {p.price > 0 && <p className="text-gray-900">${p.price.toFixed(2)}</p>}
+                      <h3 className="text-sm text-gray-900 mb-1 line-clamp-2">{p.product_title || p.product_name}</h3>
+                      {p.price > 0 && <p className="text-gray-900 text-sm">${p.price.toFixed(2)}</p>}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); addItem(p); }}
+                        className="mt-2 w-full text-xs border border-gray-300 rounded-lg py-1.5 hover:bg-gray-50 flex items-center justify-center gap-1"
+                      >
+                        <ShoppingCart className="w-3 h-3" /> Add to Cart
+                      </button>
                     </div>
                   </div>
                 </div>
