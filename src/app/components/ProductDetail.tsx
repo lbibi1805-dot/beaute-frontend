@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { X, Star, ChevronLeft, ChevronRight, Sparkles, Copy, Check, ShoppingCart, BadgeCheck, AlertTriangle, Trash2 } from "lucide-react";
+import { ArrowLeft, Star, ChevronLeft, ChevronRight, Sparkles, Copy, Check, ShoppingCart, BadgeCheck, AlertTriangle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Slider from "react-slick";
 import { ImageWithFallback } from "./figma/ImageWithFallback.tsx";
@@ -88,9 +88,10 @@ export function ProductDetail({ product, onClose, onProductClick, onLoginClick }
     }
   };
 
-  const copyUrl = (url: string) => {
-    navigator.clipboard.writeText(`http://localhost:5000${url}`).catch(() => {});
-    setCopiedUrl(url);
+  const copyUrl = (reviewId: string) => {
+    const base = window.location.origin;
+    navigator.clipboard.writeText(`${base}/review.html?id=${reviewId}`).catch(() => {});
+    setCopiedUrl(reviewId);
     setTimeout(() => setCopiedUrl(null), 2000);
   };
 
@@ -117,7 +118,8 @@ export function ProductDetail({ product, onClose, onProductClick, onLoginClick }
     arrows: false,
     responsive: [
       { breakpoint: 1024, settings: { slidesToShow: 3 } },
-      { breakpoint: 640,  settings: { slidesToShow: 2 } },
+      { breakpoint: 768,  settings: { slidesToShow: 2 } },
+      { breakpoint: 480,  settings: { slidesToShow: 1 } },
     ],
   };
 
@@ -125,9 +127,10 @@ export function ProductDetail({ product, onClose, onProductClick, onLoginClick }
     <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
       <button
         onClick={onClose}
-        className="fixed top-4 right-4 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 z-10"
+        className="fixed top-4 left-4 flex items-center gap-2 px-3 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-all z-10 text-sm text-gray-700"
       >
-        <X className="w-6 h-6" />
+        <ArrowLeft className="w-5 h-5" />
+        <span className="hidden sm:inline">Back</span>
       </button>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -409,10 +412,10 @@ export function ProductDetail({ product, onClose, onProductClick, onLoginClick }
                       </span>
                     )}
                     <button
-                      onClick={() => copyUrl(r.review_url)}
-                      className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800"
+                      onClick={() => copyUrl(r.review_id)}
+                      className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 transition-colors"
                     >
-                      {copiedUrl === r.review_url ? (
+                      {copiedUrl === r.review_id ? (
                         <><Check className="w-3 h-3" /> Copied</>
                       ) : (
                         <><Copy className="w-3 h-3" /> Copy review URL</>

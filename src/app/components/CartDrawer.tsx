@@ -1,7 +1,7 @@
 /**
  * CartDrawer — slide-over panel showing cart contents.
  */
-import { X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "../../context/CartContext.tsx";
 import { ImageWithFallback } from "./figma/ImageWithFallback.tsx";
 
@@ -24,14 +24,14 @@ export function CartDrawer({ open, onClose, onCheckout }: CartDrawerProps) {
       {/* Drawer */}
       <div className="relative ml-auto w-full max-w-md h-full bg-white shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100 transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <div className="flex items-center gap-2">
             <ShoppingBag className="w-5 h-5" />
             <h2 className="text-base font-semibold text-gray-900">Cart ({totalItems})</h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100">
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Items */}

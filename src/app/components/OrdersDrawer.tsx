@@ -2,7 +2,7 @@
  * OrdersDrawer — slide-over panel showing the current user's order history.
  * Only rendered when the user is logged in.
  */
-import { X, Package, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Package, ShoppingBag } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback.tsx";
 import { useOrders } from "../../context/OrdersContext.tsx";
 
@@ -34,14 +34,14 @@ export function OrdersDrawer({ open, onClose }: OrdersDrawerProps) {
       {/* Drawer */}
       <div className="relative ml-auto w-full max-w-md h-full bg-white shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100 transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <div className="flex items-center gap-2">
             <Package className="w-5 h-5" />
             <h2 className="text-base font-semibold text-gray-900">My Orders</h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100">
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Content */}

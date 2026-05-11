@@ -33,12 +33,6 @@ export function Header({
   const { totalItems } = useCart();
   const { role, logout } = useAuth();
 
-  // Build nav from actual API categories (first 4), fallback to empty
-  const navItems: { label: string; category: string | null }[] = [
-    { label: "All", category: null },
-    ...(categories ?? []).slice(0, 4).map((c) => ({ label: c, category: c })),
-  ];
-
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -50,26 +44,6 @@ export function Header({
           >
             BEAUTÉ
           </h1>
-
-          {/* Nav — hidden on small screens */}
-          <nav className="hidden md:flex gap-1 flex-shrink-0">
-            {navItems.map(({ label, category }) => {
-              const isActive = category === activeCategory;
-              return (
-                <button
-                  key={label}
-                  onClick={() => onCategorySelect(category)}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors min-h-[44px] ${
-                    isActive
-                      ? "font-semibold text-gray-900 bg-gray-100"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </nav>
 
           {/* Search */}
           <div className="flex-1 min-w-0 max-w-xl mx-2">
@@ -145,25 +119,6 @@ export function Header({
           </div>
         </div>
 
-        {/* Mobile nav row */}
-        <div className="md:hidden flex gap-1 pb-2 overflow-x-auto">
-          {navItems.map(({ label, category }) => {
-            const isActive = category === activeCategory;
-            return (
-              <button
-                key={label}
-                onClick={() => onCategorySelect(category)}
-                className={`px-3 py-1 text-xs rounded-full flex-shrink-0 transition-colors ${
-                  isActive
-                    ? "bg-gray-900 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
       </div>
     </header>
   );
