@@ -1,14 +1,19 @@
 import { useEffect, useState, useRef } from "react";
-import { X, Star, ChevronLeft, ChevronRight, Sparkles, Copy, Check, ShoppingCart } from "lucide-react";
+import { X, Star, ChevronLeft, ChevronRight, Sparkles, Copy, Check, ShoppingCart, BadgeCheck, AlertTriangle } from "lucide-react";
 import Slider from "react-slick";
 import { ImageWithFallback } from "./figma/ImageWithFallback.tsx";
 import { useCart } from "../../context/CartContext.tsx";
 import {
   getProductReviews,
   getSimilarProducts,
+  getCooccurringProducts,
+  getProductComplaints,
   createReview,
   type Product,
+  type CooccurringProduct,
+  type ComplaintTerm,
   type Review,
+  type RecommendLabel,
 } from "../../api/client";
 
 interface ProductDetailProps {
@@ -17,18 +22,24 @@ interface ProductDetailProps {
   onProductClick: (product: Product) => void;
 }
 
+const REC: RecommendLabel = "Recommended";
+const NOT_REC: RecommendLabel = "Not Recommended";
+
 export function ProductDetail({ product, onClose, onProductClick }: ProductDetailProps) {
   const { addItem } = useCart();
   const [reviews, setReviews]         = useState<Review[]>([]);
   const [similar, setSimilar]         = useState<Product[]>([]);
+  const [cooccurring, setCooccurring] = useState<CooccurringProduct[]>([]);
+  const [complaints, setComplaints]   = useState<ComplaintTerm[]>([]);
   const [reviewTitle, setReviewTitle] = useState("");
   const [reviewDesc, setReviewDesc]   = useState("");
   const [reviewRating, setReviewRating] = useState(0);
-  const [aiLabel, setAiLabel]         = useState<"Buy" | "Not Buy" | null>(null);
-  const [labelOverride, setLabelOverride] = useState<"Buy" | "Not Buy" | "">("");
+  const [aiLabel, setAiLabel]         = useState<RecommendLabel | null>(null);
+  const [labelOverride, setLabelOverride] = useState<RecommendLabel | "">("");
   const [submitting, setSubmitting]   = useState(false);
   const [copiedUrl, setCopiedUrl]     = useState<string | null>(null);
-  const sliderRef = useRef<Slider | null>(null);
+  const similarSliderRef = useRef<Slider | null>(null);
+  const coSliderRef      = useRef<Slider | null>(null);
 
   useEffect(() => {
     getProductReviews(product.product_id)
@@ -38,6 +49,14 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
     getSimilarProducts(product.product_id)
       .then((r) => setSimilar(r.products))
       .catch(() => setSimilar([]));
+
+    getCooccurringProducts(product.product_id)
+      .then((r) => setCooccurring(r.products))
+      .catch(() => setCooccurring([]));
+
+    getProductComplaints(product.product_id, 6)
+      .then((r) => setComplaints(r.complaints))
+      .catch(() => setComplaints([]));
   }, [product.product_id]);
 
   const handleSubmitReview = async () => {
@@ -124,7 +143,26 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
               <p className="text-3xl text-gray-900 mb-6">${product.price.toFixed(2)}</p>
             )}
 
-            <p className="text-gray-600 mb-8">{product.description || "No description available."}</p>
+            <p className="text-gray-600 mb-6">{product.description || "No description available."}</p>
+
+            {complaints.length > 0 && (
+              <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-700" />
+                  <span className="text-sm font-medium text-amber-800">Common concerns from reviewers</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {complaints.map((c) => (
+                    <span
+                      key={c.term}
+                      className="text-xs bg-white border border-amber-300 text-amber-800 px-2 py-1 rounded-full"
+                    >
+                      {c.term}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button
               onClick={() => addItem(product)}
@@ -136,20 +174,20 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
           </div>
         </div>
 
-        {/* ── Similar products ── */}
+        {/* ── Similar products (content-based) ── */}
         {similar.length > 0 && (
           <div className="mb-16">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl text-gray-900">Similar Items You May Like</h2>
               <div className="flex gap-2">
                 <button
-                  onClick={() => sliderRef.current?.slickPrev()}
+                  onClick={() => similarSliderRef.current?.slickPrev()}
                   className="p-2 border border-gray-300 rounded-full hover:bg-gray-50"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
-                  onClick={() => sliderRef.current?.slickNext()}
+                  onClick={() => similarSliderRef.current?.slickNext()}
                   className="p-2 border border-gray-300 rounded-full hover:bg-gray-50"
                 >
                   <ChevronRight className="w-5 h-5" />
@@ -157,33 +195,54 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
               </div>
             </div>
 
-            <Slider ref={sliderRef} {...sliderSettings}>
+            <Slider ref={similarSliderRef} {...sliderSettings}>
               {similar.map((p) => (
-                <div key={p.product_id} className="px-2">
-                  <div
-                    onClick={() => onProductClick(p)}
-                    className="cursor-pointer bg-white rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
-                  >
-                    <div className="aspect-square bg-[#FCE4EC] overflow-hidden">
-                      <ImageWithFallback
-                        src={p.image_url || ""}
-                        alt={p.product_name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-3">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{p.brand_name}</p>
-                      <h3 className="text-sm text-gray-900 mb-1 line-clamp-2">{p.product_title || p.product_name}</h3>
-                      {p.price > 0 && <p className="text-gray-900 text-sm">${p.price.toFixed(2)}</p>}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); addItem(p); }}
-                        className="mt-2 w-full text-xs border border-gray-300 rounded-lg py-1.5 hover:bg-gray-50 flex items-center justify-center gap-1"
-                      >
-                        <ShoppingCart className="w-3 h-3" /> Add to Cart
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <ProductCarouselCard
+                  key={p.product_id}
+                  product={p}
+                  onClick={() => onProductClick(p)}
+                  onAddToCart={() => addItem(p)}
+                />
+              ))}
+            </Slider>
+          </div>
+        )}
+
+        {/* ── Customers Also Bought (collaborative filtering) ── */}
+        {cooccurring.length > 0 && (
+          <div className="mb-16">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl text-gray-900">Customers Also Bought</h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  Based on verified buyers who reviewed both products
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => coSliderRef.current?.slickPrev()}
+                  className="p-2 border border-gray-300 rounded-full hover:bg-gray-50"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => coSliderRef.current?.slickNext()}
+                  className="p-2 border border-gray-300 rounded-full hover:bg-gray-50"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <Slider ref={coSliderRef} {...sliderSettings}>
+              {cooccurring.map((p) => (
+                <ProductCarouselCard
+                  key={p.product_id}
+                  product={p}
+                  onClick={() => onProductClick(p)}
+                  onAddToCart={() => addItem(p)}
+                  footnote={`${p.cf_shared_reviewers} shared reviewers`}
+                />
               ))}
             </Slider>
           </div>
@@ -248,16 +307,21 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
                   After submitting, the AI will predict whether you recommend this product.
                 </span>
               </div>
+              {aiLabel && (
+                <p className="text-xs text-gray-600 mb-2">
+                  Last AI prediction: <strong>{aiLabel}</strong>
+                </p>
+              )}
               <div className="flex items-center gap-3">
                 <label className="text-sm text-gray-700">Override prediction (optional):</label>
                 <select
                   value={labelOverride}
-                  onChange={(e) => setLabelOverride(e.target.value as "" | "Buy" | "Not Buy")}
+                  onChange={(e) => setLabelOverride(e.target.value as "" | RecommendLabel)}
                   className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gray-900"
                 >
                   <option value="">Use AI prediction</option>
-                  <option value="Buy">Recommend Buying</option>
-                  <option value="Not Buy">Do Not Recommend</option>
+                  <option value={REC}>Recommend Buying</option>
+                  <option value={NOT_REC}>Do Not Recommend</option>
                 </select>
               </div>
             </div>
@@ -288,18 +352,23 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
                         }`}
                       />
                     ))}
+                    {r.is_verified_buyer && (
+                      <span className="ml-2 inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        <BadgeCheck className="w-3 h-3" /> Verified Buyer
+                      </span>
+                    )}
                   </div>
                   <h4 className="text-sm font-medium text-gray-900 mb-1">{r.title}</h4>
                   <p className="text-sm text-gray-600 mb-3">{r.description}</p>
                   <div className="flex items-center gap-3 flex-wrap">
                     <span
                       className={`inline-block text-xs px-2 py-1 rounded ${
-                        r.final_label === "Buy"
+                        r.final_label === REC
                           ? "bg-green-100 text-green-700"
                           : "bg-red-100 text-red-700"
                       }`}
                     >
-                      {r.final_label === "Buy" ? "Recommends" : "Does Not Recommend"}
+                      {r.final_label === REC ? "Recommends" : "Does Not Recommend"}
                     </span>
                     {r.overridden && (
                       <span className="text-xs text-gray-500">
@@ -322,6 +391,44 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+interface CardProps {
+  product: Product;
+  onClick: () => void;
+  onAddToCart: () => void;
+  footnote?: string;
+}
+
+function ProductCarouselCard({ product, onClick, onAddToCart, footnote }: CardProps) {
+  return (
+    <div className="px-2">
+      <div
+        onClick={onClick}
+        className="cursor-pointer bg-white rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+      >
+        <div className="aspect-square bg-[#FCE4EC] overflow-hidden">
+          <ImageWithFallback
+            src={product.image_url || ""}
+            alt={product.product_name}
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <div className="p-3">
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{product.brand_name}</p>
+          <h3 className="text-sm text-gray-900 mb-1 line-clamp-2">{product.product_title || product.product_name}</h3>
+          {product.price > 0 && <p className="text-gray-900 text-sm">${product.price.toFixed(2)}</p>}
+          {footnote && <p className="text-[10px] text-gray-400 mt-0.5">{footnote}</p>}
+          <button
+            onClick={(e) => { e.stopPropagation(); onAddToCart(); }}
+            className="mt-2 w-full text-xs border border-gray-300 rounded-lg py-1.5 hover:bg-gray-50 flex items-center justify-center gap-1"
+          >
+            <ShoppingCart className="w-3 h-3" /> Add to Cart
+          </button>
+        </div>
       </div>
     </div>
   );
