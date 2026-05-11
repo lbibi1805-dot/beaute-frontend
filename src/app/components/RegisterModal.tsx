@@ -1,18 +1,18 @@
 /**
- * LoginModal — username/password dialog using the existing dialog.tsx primitive.
+ * RegisterModal — username/password registration dialog.
  */
 import { useState } from "react";
-import { LogIn } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.tsx";
 
-interface LoginModalProps {
+interface RegisterModalProps {
   open: boolean;
   onClose: () => void;
-  onRegisterClick?: () => void;
+  onSwitchToLogin: () => void;
 }
 
-export function LoginModal({ open, onClose, onRegisterClick }: LoginModalProps) {
-  const { login } = useAuth();
+export function RegisterModal({ open, onClose, onSwitchToLogin }: RegisterModalProps) {
+  const { register } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError]       = useState<string | null>(null);
@@ -23,14 +23,23 @@ export function LoginModal({ open, onClose, onRegisterClick }: LoginModalProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (username.trim().length < 3) {
+      setError("Username must be at least 3 characters.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
     setLoading(true);
     try {
-      await login(username.trim(), password);
+      await register(username.trim(), password);
       setUsername("");
       setPassword("");
       onClose();
-    } catch {
-      setError("Invalid username or password.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Registration failed.";
+      setError(msg.includes("already taken") ? "Username already taken. Try another." : msg);
     } finally {
       setLoading(false);
     }
@@ -44,8 +53,8 @@ export function LoginModal({ open, onClose, onRegisterClick }: LoginModalProps) 
       {/* Modal */}
       <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-8">
         <div className="flex items-center gap-3 mb-6">
-          <LogIn className="w-5 h-5 text-gray-700" />
-          <h2 className="text-lg font-semibold text-gray-900">Sign in</h2>
+          <UserPlus className="w-5 h-5 text-gray-700" />
+          <h2 className="text-lg font-semibold text-gray-900">Create account</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -68,7 +77,7 @@ export function LoginModal({ open, onClose, onRegisterClick }: LoginModalProps) 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-              autoComplete="current-password"
+              autoComplete="new-password"
               required
             />
           </div>
@@ -80,24 +89,19 @@ export function LoginModal({ open, onClose, onRegisterClick }: LoginModalProps) 
             disabled={loading}
             className="w-full bg-gray-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Creating account…" : "Create account"}
           </button>
         </form>
 
-        <p className="mt-4 text-xs text-gray-400 text-center">
-          Demo — admin / admin123 &nbsp;·&nbsp; customer / customer123
+        <p className="mt-4 text-xs text-gray-500 text-center">
+          Already have an account?{" "}
+          <button
+            onClick={() => { onClose(); onSwitchToLogin(); }}
+            className="text-gray-900 font-medium hover:underline"
+          >
+            Sign in
+          </button>
         </p>
-        {onRegisterClick && (
-          <p className="mt-2 text-xs text-gray-500 text-center">
-            New here?{" "}
-            <button
-              onClick={() => { onClose(); onRegisterClick(); }}
-              className="text-gray-900 font-medium hover:underline"
-            >
-              Create an account
-            </button>
-          </p>
-        )}
       </div>
     </div>
   );
