@@ -44,6 +44,7 @@ export interface CooccurringProduct extends Product {
 export interface Review {
   review_id: string;
   product_id: string;
+  author?: string | null;
   title: string;
   description: string;
   rating: number;
@@ -136,11 +137,19 @@ export async function getReview(reviewId: string): Promise<Review> {
 export interface AuthInfo {
   token: string;
   role: "admin" | "customer";
+  username: string;
   expires_at: string;
 }
 
 export async function loginUser(username: string, password: string): Promise<AuthInfo> {
   return request("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function registerUser(username: string, password: string): Promise<AuthInfo> {
+  return request("/auth/register", {
     method: "POST",
     body: JSON.stringify({ username, password }),
   });
@@ -233,6 +242,17 @@ export async function getAnalyticsComplaints(token: string, brand?: string, limi
 
 export async function deleteReview(reviewId: string, token: string): Promise<void> {
   const res = await fetch(`${BASE}/admin/reviews/${reviewId}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.error ?? `HTTP ${res.status}`);
+  }
+}
+
+export async function deleteReviewByUser(productId: string, reviewId: string, token: string): Promise<void> {
+  const res = await fetch(`${BASE}/products/${productId}/reviews/${reviewId}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json", ...authHeaders(token) },
   });

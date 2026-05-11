@@ -1,14 +1,17 @@
 import { useEffect, useState, useRef } from "react";
-import { X, Star, ChevronLeft, ChevronRight, Sparkles, Copy, Check, ShoppingCart, BadgeCheck, AlertTriangle } from "lucide-react";
+import { X, Star, ChevronLeft, ChevronRight, Sparkles, Copy, Check, ShoppingCart, BadgeCheck, AlertTriangle, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import Slider from "react-slick";
 import { ImageWithFallback } from "./figma/ImageWithFallback.tsx";
 import { useCart } from "../../context/CartContext.tsx";
+import { useAuth } from "../../context/AuthContext.tsx";
 import {
   getProductReviews,
   getSimilarProducts,
   getCooccurringProducts,
   getProductComplaints,
   createReview,
+  deleteReviewByUser,
   type Product,
   type CooccurringProduct,
   type ComplaintTerm,
@@ -20,13 +23,15 @@ interface ProductDetailProps {
   product: Product;
   onClose: () => void;
   onProductClick: (product: Product) => void;
+  onLoginClick?: () => void;
 }
 
 const REC: RecommendLabel = "Recommended";
 const NOT_REC: RecommendLabel = "Not Recommended";
 
-export function ProductDetail({ product, onClose, onProductClick }: ProductDetailProps) {
+export function ProductDetail({ product, onClose, onProductClick, onLoginClick }: ProductDetailProps) {
   const { addItem } = useCart();
+  const { token, username } = useAuth();
   const [reviews, setReviews]         = useState<Review[]>([]);
   const [similar, setSimilar]         = useState<Product[]>([]);
   const [cooccurring, setCooccurring] = useState<CooccurringProduct[]>([]);
@@ -38,6 +43,7 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
   const [labelOverride, setLabelOverride] = useState<RecommendLabel | "">("");
   const [submitting, setSubmitting]   = useState(false);
   const [copiedUrl, setCopiedUrl]     = useState<string | null>(null);
+  const [deletingReview, setDeletingReview] = useState<string | null>(null);
   const similarSliderRef = useRef<Slider | null>(null);
   const coSliderRef      = useRef<Slider | null>(null);
 
@@ -86,6 +92,20 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
     navigator.clipboard.writeText(`http://localhost:5000${url}`).catch(() => {});
     setCopiedUrl(url);
     setTimeout(() => setCopiedUrl(null), 2000);
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!token) return;
+    setDeletingReview(reviewId);
+    try {
+      await deleteReviewByUser(product.product_id, reviewId, token);
+      setReviews((prev) => prev.filter((r) => r.review_id !== reviewId));
+      toast.success("Review deleted");
+    } catch {
+      toast.error("Could not delete review");
+    } finally {
+      setDeletingReview(null);
+    }
   };
 
   const sliderSettings = {
@@ -165,7 +185,7 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
             )}
 
             <button
-              onClick={() => addItem(product)}
+              onClick={() => { addItem(product); toast.success(`${product.product_title || product.product_name} added to cart`); }}
               className="w-full bg-gray-900 text-white py-4 rounded-lg hover:bg-gray-800 transition-colors mb-4 flex items-center justify-center gap-2"
             >
               <ShoppingCart className="w-5 h-5" />
@@ -201,7 +221,7 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
                   key={p.product_id}
                   product={p}
                   onClick={() => onProductClick(p)}
-                  onAddToCart={() => addItem(p)}
+                  onAddToCart={() => { addItem(p); toast.success(`${p.product_title || p.product_name} added to cart`); }}
                 />
               ))}
             </Slider>
@@ -240,7 +260,7 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
                   key={p.product_id}
                   product={p}
                   onClick={() => onProductClick(p)}
-                  onAddToCart={() => addItem(p)}
+                  onAddToCart={() => { addItem(p); toast.success(`${p.product_title || p.product_name} added to cart`); }}
                   footnote={`${p.cf_shared_reviewers} shared reviewers`}
                 />
               ))}
@@ -249,6 +269,20 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
         )}
 
         {/* ── Review form ── */}
+        {!token ? (
+          <div className="bg-white border border-gray-200 rounded-lg p-8 mb-12 text-center">
+            <h2 className="text-2xl text-gray-900 mb-4">Write a Review</h2>
+            <p className="text-gray-500 mb-6">Sign in to share your experience with this product.</p>
+            {onLoginClick && (
+              <button
+                onClick={onLoginClick}
+                className="bg-gray-900 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+              >
+                Sign in
+              </button>
+            )}
+          </div>
+        ) : (
         <div className="bg-white border border-gray-200 rounded-lg p-8 mb-12">
           <h2 className="text-2xl text-gray-900 mb-6">Write a Review</h2>
 
@@ -334,8 +368,7 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
               {submitting ? "Submitting…" : "Submit Review"}
             </button>
           </div>
-        </div>
-
+        </div>        )}
         {/* ── Existing reviews ── */}
         {reviews.length > 0 && (
           <div>
@@ -385,6 +418,16 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
                         <><Copy className="w-3 h-3" /> Copy review URL</>
                       )}
                     </button>
+                    {username && r.author === username && (
+                      <button
+                        onClick={() => handleDeleteReview(r.review_id)}
+                        disabled={deletingReview === r.review_id}
+                        className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        {deletingReview === r.review_id ? "Deleting\u2026" : "Delete"}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
