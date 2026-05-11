@@ -3,7 +3,7 @@
  * Base URL is the Flask dev server on port 5000.
  */
 
-const BASE = "http://localhost:5000/api";
+const BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
