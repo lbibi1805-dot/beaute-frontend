@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   X, TrendingUp, BarChart2, ShoppingBag, Shield, LineChart as LineChartIcon,
-  DollarSign, AlertTriangle,
+  DollarSign, AlertTriangle, ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.tsx";
 import {
@@ -101,9 +101,10 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
       <button
         onClick={onClose}
-        className="fixed top-4 right-4 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 z-10"
+        className="fixed top-4 left-4 flex items-center gap-2 px-3 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-all z-10 text-sm text-gray-700"
       >
-        <X className="w-6 h-6" />
+        <ArrowLeft className="w-5 h-5" />
+        <span className="hidden sm:inline">Back</span>
       </button>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">

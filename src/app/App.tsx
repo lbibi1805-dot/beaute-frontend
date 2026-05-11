@@ -31,6 +31,10 @@ function AppInner() {
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
   const [filters, setFilters]       = useState<SearchParams>({});
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [pendingProductId, setPendingProductId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("product");
+  });
 
   // Overlay states
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -62,6 +66,17 @@ function AppInner() {
     const timeout = setTimeout(() => fetchProducts(filters), 300);
     return () => clearTimeout(timeout);
   }, [filters, fetchProducts]);
+
+  useEffect(() => {
+    if (!pendingProductId || products.length === 0) return;
+    const match = products.find((p) => p.product_id === pendingProductId);
+    if (match) {
+      setSelected(match);
+      setPendingProductId(null);
+      // Clean the URL so refresh doesn't reopen
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [products, pendingProductId]);
 
   const handleSearchChange = (q: string) => {
     setFilters((prev) => ({ ...prev, q: q || undefined }));
