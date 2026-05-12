@@ -6,9 +6,10 @@
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const { headers: extraHeaders, ...rest } = init ?? {};
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    ...init,
+    headers: { "Content-Type": "application/json", ...(extraHeaders ?? {}) },
+    ...rest,
   });
   const body = await res.json();
   if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`);
@@ -55,7 +56,6 @@ export interface Review {
   review_url: string;
   created_at?: string;
   source?: "live" | "historical";
-  author?: string;
 }
 
 export interface SearchParams {
@@ -64,6 +64,7 @@ export interface SearchParams {
   category?: string;
   min_price?: number;
   max_price?: number;
+  sort?: "price_asc" | "price_desc" | "rating_asc" | "rating_desc";
 }
 
 export interface FilterOptions {
@@ -86,6 +87,7 @@ export async function searchProducts(params: SearchParams = {}): Promise<{ count
   if (params.category)    qs.set("category", params.category);
   if (params.min_price != null) qs.set("min_price", String(params.min_price));
   if (params.max_price != null) qs.set("max_price", String(params.max_price));
+  if (params.sort)        qs.set("sort", params.sort);
   const suffix = qs.toString() ? `?${qs}` : "";
   return request(`/products${suffix}`);
 }
@@ -123,9 +125,10 @@ export interface CreateReviewBody {
   label_override?: RecommendLabel;
 }
 
-export async function createReview(productId: string, body: CreateReviewBody): Promise<Review> {
+export async function createReview(productId: string, body: CreateReviewBody, token?: string): Promise<Review> {
   return request(`/products/${productId}/reviews`, {
     method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: JSON.stringify(body),
   });
 }

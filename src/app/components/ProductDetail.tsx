@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { ArrowLeft, Star, ChevronLeft, ChevronRight, Sparkles, Copy, Check, ShoppingCart, BadgeCheck, AlertTriangle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Slider from "react-slick";
@@ -44,8 +44,35 @@ export function ProductDetail({ product, onClose, onProductClick, onLoginClick }
   const [submitting, setSubmitting]   = useState(false);
   const [copiedUrl, setCopiedUrl]     = useState<string | null>(null);
   const [deletingReview, setDeletingReview] = useState<string | null>(null);
+
+  // ── Review filter / sort state ──────────────────────────────────────────
+  const [rvSort,     setRvSort]     = useState<"newest" | "oldest" | "rating_desc" | "rating_asc">("newest");
+  const [rvRating,   setRvRating]   = useState<number | null>(null);
+  const [rvLabel,    setRvLabel]    = useState<"" | "Recommended" | "Not Recommended">("" );
+  const [rvVerified, setRvVerified] = useState(false);
+  const [rvSource,   setRvSource]   = useState<"" | "historical" | "new">("" );
+  const [rvAuthor,   setRvAuthor]   = useState<"" | "mine" | "others">("" );
   const similarSliderRef = useRef<Slider | null>(null);
   const coSliderRef      = useRef<Slider | null>(null);
+
+  // ── Derived: filtered + sorted reviews ───────────────────────────────────
+  const displayedReviews = useMemo(() => {
+    let result = [...reviews];
+    if (rvRating   !== null) result = result.filter((r) => r.rating === rvRating);
+    if (rvLabel)             result = result.filter((r) => r.final_label === rvLabel);
+    if (rvVerified)          result = result.filter((r) => r.is_verified_buyer);
+    if (rvSource === "historical") result = result.filter((r) => r.source === "historical");
+    if (rvSource === "new")        result = result.filter((r) => r.source !== "historical");
+    if (rvAuthor === "mine")   result = result.filter((r) => r.author != null && r.author === username);
+    if (rvAuthor === "others") result = result.filter((r) => r.author == null || r.author !== username);
+    switch (rvSort) {
+      case "oldest":      result.sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "")); break;
+      case "rating_desc": result.sort((a, b) => b.rating - a.rating); break;
+      case "rating_asc":  result.sort((a, b) => a.rating - b.rating); break;
+      default:            result.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+    }
+    return result;
+  }, [reviews, rvRating, rvLabel, rvVerified, rvSource, rvAuthor, rvSort, username]);
 
   useEffect(() => {
     getProductReviews(product.product_id)
@@ -74,7 +101,7 @@ export function ProductDetail({ product, onClose, onProductClick, onLoginClick }
         description: reviewDesc,
         rating: reviewRating,
         label_override: labelOverride || undefined,
-      });
+      }, token ?? undefined);
       setAiLabel(saved.ai_label);
       setReviews((prev) => [...prev, saved]);
       setReviewTitle("");
@@ -373,11 +400,143 @@ export function ProductDetail({ product, onClose, onProductClick, onLoginClick }
           </div>
         </div>        )}
         {/* ── Existing reviews ── */}
-        {reviews.length > 0 && (
+        {reviews.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <p className="text-lg font-medium mb-1">No reviews yet</p>
+            <p className="text-sm">Be the first to share your experience with this product!</p>
+          </div>
+        ) : (
           <div>
-            <h2 className="text-2xl text-gray-900 mb-6">Reviews ({reviews.length})</h2>
+            {/* header row */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl text-gray-900">
+                Reviews{" "}
+                <span className="text-base font-normal text-gray-500">
+                  ({displayedReviews.length} of {reviews.length})
+                </span>
+              </h2>
+              {/* reset filters */}
+              {(rvRating !== null || rvLabel || rvVerified || rvSource || rvAuthor || rvSort !== "newest") && (
+                <button
+                  onClick={() => { setRvRating(null); setRvLabel(""); setRvVerified(false); setRvSource(""); setRvAuthor(""); setRvSort("newest"); }}
+                  className="text-xs text-gray-500 hover:text-gray-900 underline"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+
+            {/* ── Filter / sort bar ── */}
+            <div className="flex flex-wrap gap-x-5 gap-y-3 mb-5 p-3 bg-gray-50 rounded-lg text-xs">
+              {/* Sort */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-500 font-medium shrink-0">Sort:</span>
+                <select
+                  value={rvSort}
+                  onChange={(e) => setRvSort(e.target.value as typeof rvSort)}
+                  className="border border-gray-300 rounded px-1.5 py-0.5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="rating_desc">Rating ↑</option>
+                  <option value="rating_asc">Rating ↓</option>
+                </select>
+              </div>
+
+              {/* Rating */}
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500 font-medium shrink-0">Rating:</span>
+                {[null, 5, 4, 3, 2, 1].map((v) => (
+                  <button
+                    key={v ?? "all"}
+                    onClick={() => setRvRating(v)}
+                    className={`px-1.5 py-0.5 rounded border transition-colors ${
+                      rvRating === v
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "border-gray-300 text-gray-600 hover:border-gray-500"
+                    }`}
+                  >
+                    {v === null ? "All" : `${v}★`}
+                  </button>
+                ))}
+              </div>
+
+              {/* Label */}
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500 font-medium shrink-0">Label:</span>
+                {(["", "Recommended", "Not Recommended"] as const).map((v) => (
+                  <button
+                    key={v || "all"}
+                    onClick={() => setRvLabel(v)}
+                    className={`px-1.5 py-0.5 rounded border transition-colors ${
+                      rvLabel === v
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "border-gray-300 text-gray-600 hover:border-gray-500"
+                    }`}
+                  >
+                    {v === "" ? "All" : v === "Recommended" ? "✓ Rec" : "✗ Not Rec"}
+                  </button>
+                ))}
+              </div>
+
+              {/* Source */}
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500 font-medium shrink-0">Source:</span>
+                {([["", "All"], ["new", "New"], ["historical", "Historical"]] as const).map(([v, label]) => (
+                  <button
+                    key={v || "all"}
+                    onClick={() => setRvSource(v)}
+                    className={`px-1.5 py-0.5 rounded border transition-colors ${
+                      rvSource === v
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "border-gray-300 text-gray-600 hover:border-gray-500"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Author — only useful when logged in */}
+              {username && (
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-500 font-medium shrink-0">Author:</span>
+                  {([["", "All"], ["mine", "Mine"], ["others", "Others"]] as const).map(([v, label]) => (
+                    <button
+                      key={v || "all"}
+                      onClick={() => setRvAuthor(v)}
+                      className={`px-1.5 py-0.5 rounded border transition-colors ${
+                        rvAuthor === v
+                          ? "bg-gray-900 text-white border-gray-900"
+                          : "border-gray-300 text-gray-600 hover:border-gray-500"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Verified toggle */}
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rvVerified}
+                  onChange={(e) => setRvVerified(e.target.checked)}
+                  className="w-3.5 h-3.5 accent-gray-900"
+                />
+                <span className="text-gray-600">Verified only</span>
+              </label>
+            </div>
+
+            {/* ── Review cards ── */}
+            {displayedReviews.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                No reviews match your current filters.
+              </div>
+            ) : (
             <div className="space-y-4">
-              {reviews.map((r) => (
+              {displayedReviews.map((r) => (
                 <div key={r.review_id} className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     {[...Array(5)].map((_, i) => (
@@ -412,11 +571,11 @@ export function ProductDetail({ product, onClose, onProductClick, onLoginClick }
                           : "bg-red-100 text-red-700"
                       }`}
                     >
-                      {r.final_label === REC ? "Recommends" : "Does Not Recommend"}
+                      {r.final_label === REC ? "Recommended" : "Not Recommended"}
                     </span>
                     {r.overridden && (
                       <span className="text-xs text-gray-500">
-                        (AI predicted: {r.ai_label})
+                        (AI Label: {r.ai_label})
                       </span>
                     )}
                     <button
@@ -443,6 +602,7 @@ export function ProductDetail({ product, onClose, onProductClick, onLoginClick }
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
       </div>

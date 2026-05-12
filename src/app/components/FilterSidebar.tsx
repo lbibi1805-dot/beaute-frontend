@@ -9,6 +9,15 @@ import * as Slider from "@radix-ui/react-slider";
 import { ChevronDown, ChevronUp, Check, SlidersHorizontal } from "lucide-react";
 import type { FilterOptions, SearchParams } from "../../api/client";
 
+type SortOption = "price_asc" | "price_desc" | "rating_asc" | "rating_desc";
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "price_asc",   label: "Price: Low → High" },
+  { value: "price_desc",  label: "Price: High → Low" },
+  { value: "rating_asc",  label: "Rating: Low → High" },
+  { value: "rating_desc", label: "Rating: High → Low" },
+];
+
 interface FilterSidebarProps {
   options: FilterOptions | null;
   filters: SearchParams;
@@ -51,7 +60,8 @@ export function FilterSidebar({ options, filters, onFiltersChange }: FilterSideb
     selectedBrands.size > 0 ||
     selectedCategories.size > 0 ||
     filters.min_price != null ||
-    filters.max_price != null;
+    filters.max_price != null ||
+    filters.sort != null;
 
   return (
     <aside className="w-full">
@@ -69,6 +79,23 @@ export function FilterSidebar({ options, filters, onFiltersChange }: FilterSideb
               Clear all
             </button>
           )}
+        </div>
+
+        {/* ── Sort ── */}
+        <div className="mb-6">
+          <h4 className="text-sm font-medium text-gray-900 py-2 border-b border-gray-200 mb-3">Sort By</h4>
+          <select
+            value={filters.sort ?? ""}
+            onChange={(e) =>
+              onFiltersChange({ ...filters, sort: (e.target.value as SortOption) || undefined })
+            }
+            className="w-full text-sm border border-gray-300 rounded px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-900"
+          >
+            <option value="">Default order</option>
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
         </div>
 
         {/* ── Brand filter ── */}
