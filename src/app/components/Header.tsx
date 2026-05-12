@@ -1,7 +1,7 @@
 /**
  * Header — sticky top bar with search, nav categories, cart badge, and auth icon.
  */
-import { Search, ShoppingBag, User, LogOut, LayoutDashboard } from "lucide-react";
+import { Search, ShoppingBag, User, LogOut, LayoutDashboard, Package } from "lucide-react";
 import { useCart } from "../../context/CartContext.tsx";
 import { useAuth } from "../../context/AuthContext.tsx";
 
@@ -13,15 +13,10 @@ interface HeaderProps {
   onCategorySelect: (cat: string | null) => void;
   onLoginClick: () => void;
   onCartClick: () => void;
+  onOrdersClick: () => void;
   onDashboardClick: () => void;
+  categories?: string[];
 }
-
-const NAV_ITEMS: { label: string; category: string | null }[] = [
-  { label: "New",       category: null },
-  { label: "Makeup",    category: "Makeup" },
-  { label: "Skincare",  category: "Skincare" },
-  { label: "Fragrance", category: "Fragrance" },
-];
 
 export function Header({
   searchQuery,
@@ -31,7 +26,9 @@ export function Header({
   onCategorySelect,
   onLoginClick,
   onCartClick,
+  onOrdersClick,
   onDashboardClick,
+  categories,
 }: HeaderProps) {
   const { totalItems } = useCart();
   const { role, logout } = useAuth();
@@ -47,26 +44,6 @@ export function Header({
           >
             BEAUTÉ
           </h1>
-
-          {/* Nav — hidden on small screens */}
-          <nav className="hidden md:flex gap-1 flex-shrink-0">
-            {NAV_ITEMS.map(({ label, category }) => {
-              const isActive = category === activeCategory;
-              return (
-                <button
-                  key={label}
-                  onClick={() => onCategorySelect(category)}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors min-h-[44px] ${
-                    isActive
-                      ? "font-semibold text-gray-900 bg-gray-100"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </nav>
 
           {/* Search */}
           <div className="flex-1 min-w-0 max-w-xl mx-2">
@@ -96,6 +73,16 @@ export function Header({
                 title="Admin Dashboard"
               >
                 <LayoutDashboard className="w-5 h-5 text-gray-700" />
+              </button>
+            )}
+
+            {role && (
+              <button
+                onClick={onOrdersClick}
+                className="p-2 hover:bg-gray-100 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"
+                title="My Orders"
+              >
+                <Package className="w-5 h-5 text-gray-700" />
               </button>
             )}
 
@@ -132,25 +119,6 @@ export function Header({
           </div>
         </div>
 
-        {/* Mobile nav row */}
-        <div className="md:hidden flex gap-1 pb-2 overflow-x-auto">
-          {NAV_ITEMS.map(({ label, category }) => {
-            const isActive = category === activeCategory;
-            return (
-              <button
-                key={label}
-                onClick={() => onCategorySelect(category)}
-                className={`px-3 py-1 text-xs rounded-full flex-shrink-0 transition-colors ${
-                  isActive
-                    ? "bg-gray-900 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
       </div>
     </header>
   );

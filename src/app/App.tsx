@@ -1,14 +1,18 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
-import { AuthProvider } from "../context/AuthContext.tsx";
+import { Toaster } from "sonner";
+import { AuthProvider, useAuth } from "../context/AuthContext.tsx";
 import { CartProvider } from "../context/CartContext.tsx";
+import { OrdersProvider } from "../context/OrdersContext.tsx";
 import { Header } from "./components/Header.tsx";
 import { ProductGrid } from "./components/ProductGrid.tsx";
 import { ProductDetail } from "./components/ProductDetail.tsx";
 import { FilterSidebar } from "./components/FilterSidebar.tsx";
 import { LoginModal } from "./components/LoginModal.tsx";
+import { RegisterModal } from "./components/RegisterModal.tsx";
 import { CartDrawer } from "./components/CartDrawer.tsx";
 import { CheckoutModal } from "./components/CheckoutModal.tsx";
+import { OrdersDrawer } from "./components/OrdersDrawer.tsx";
 import { AdminDashboard } from "./components/AdminDashboard.tsx";
 import {
   searchProducts,
@@ -19,6 +23,7 @@ import {
 } from "../api/client.ts";
 
 function AppInner() {
+  const { token } = useAuth();
   const [products, setProducts]     = useState<Product[]>([]);
   const [total, setTotal]           = useState(0);
   const [loading, setLoading]       = useState(true);
@@ -26,12 +31,18 @@ function AppInner() {
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
   const [filters, setFilters]       = useState<SearchParams>({});
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [pendingProductId, setPendingProductId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("product");
+  });
 
   // Overlay states
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [loginOpen, setLoginOpen]       = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
   const [cartOpen, setCartOpen]         = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [ordersOpen, setOrdersOpen]     = useState(false);
   const [dashboardOpen, setDashboardOpen] = useState(false);
 
   useEffect(() => {
@@ -55,6 +66,17 @@ function AppInner() {
     const timeout = setTimeout(() => fetchProducts(filters), 300);
     return () => clearTimeout(timeout);
   }, [filters, fetchProducts]);
+
+  useEffect(() => {
+    if (!pendingProductId || products.length === 0) return;
+    const match = products.find((p) => p.product_id === pendingProductId);
+    if (match) {
+      setSelected(match);
+      setPendingProductId(null);
+      // Clean the URL so refresh doesn't reopen
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [products, pendingProductId]);
 
   const handleSearchChange = (q: string) => {
     setFilters((prev) => ({ ...prev, q: q || undefined }));
@@ -80,7 +102,9 @@ function AppInner() {
         onCategorySelect={handleCategorySelect}
         onLoginClick={() => setLoginOpen(true)}
         onCartClick={() => setCartOpen(true)}
+        onOrdersClick={() => setOrdersOpen(true)}
         onDashboardClick={() => setDashboardOpen(true)}
+        categories={filterOptions?.categories}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -126,18 +150,25 @@ function AppInner() {
 
       {/* Overlays */}
       {selected && (
-        <ProductDetail product={selected} onClose={() => setSelected(null)} onProductClick={setSelected} />
+        <ProductDetail product={selected} onClose={() => setSelected(null)} onProductClick={setSelected} onLoginClick={() => setLoginOpen(true)} />
       )}
 
-      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} onRegisterClick={() => setRegisterOpen(true)} />
+
+      <RegisterModal open={registerOpen} onClose={() => setRegisterOpen(false)} onSwitchToLogin={() => setLoginOpen(true)} />
 
       <CartDrawer
         open={cartOpen}
         onClose={() => setCartOpen(false)}
-        onCheckout={() => setCheckoutOpen(true)}
+        onCheckout={() => {
+          if (!token) { setCartOpen(false); setLoginOpen(true); }
+          else { setCheckoutOpen(true); }
+        }}
       />
 
       <CheckoutModal open={checkoutOpen} onClose={() => setCheckoutOpen(false)} />
+
+      <OrdersDrawer open={ordersOpen} onClose={() => setOrdersOpen(false)} />
 
       {dashboardOpen && <AdminDashboard onClose={() => setDashboardOpen(false)} />}
     </div>
@@ -148,8 +179,16 @@ export default function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <AppInner />
+        <OrdersProviderWrapper>
+          <Toaster position="top-right" richColors closeButton />
+          <AppInner />
+        </OrdersProviderWrapper>
       </CartProvider>
     </AuthProvider>
   );
+}
+
+function OrdersProviderWrapper({ children }: { children: ReactNode }) {
+  const { username } = useAuth();
+  return <OrdersProvider username={username}>{children}</OrdersProvider>;
 }

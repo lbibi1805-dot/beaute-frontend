@@ -3,6 +3,8 @@
  */
 import { CheckCircle } from "lucide-react";
 import { useCart } from "../../context/CartContext.tsx";
+import { useOrders } from "../../context/OrdersContext.tsx";
+import { useAuth } from "../../context/AuthContext.tsx";
 
 interface CheckoutModalProps {
   open: boolean;
@@ -11,10 +13,15 @@ interface CheckoutModalProps {
 
 export function CheckoutModal({ open, onClose }: CheckoutModalProps) {
   const { items, subtotal, clearCart } = useCart();
+  const { addOrder } = useOrders();
+  const { username } = useAuth();
 
   if (!open) return null;
 
   const handleContinue = () => {
+    if (username) {
+      addOrder([...items], subtotal, username);
+    }
     clearCart();
     onClose();
   };
