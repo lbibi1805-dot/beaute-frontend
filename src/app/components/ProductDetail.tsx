@@ -343,7 +343,7 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
             <div className="space-y-4">
               {reviews.map((r) => (
                 <div key={r.review_id} className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
@@ -356,6 +356,14 @@ export function ProductDetail({ product, onClose, onProductClick }: ProductDetai
                       <span className="ml-2 inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                         <BadgeCheck className="w-3 h-3" /> Verified Buyer
                       </span>
+                    )}
+                    {r.source === "historical" && (
+                      <span className="text-[10px] uppercase tracking-wide text-gray-500 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full">
+                        Historical
+                      </span>
+                    )}
+                    {r.author && (
+                      <span className="text-xs text-gray-500 ml-auto">— {r.author}</span>
                     )}
                   </div>
                   <h4 className="text-sm font-medium text-gray-900 mb-1">{r.title}</h4>

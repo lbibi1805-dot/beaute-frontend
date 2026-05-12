@@ -53,6 +53,8 @@ export interface Review {
   is_verified_buyer: boolean;
   review_url: string;
   created_at?: string;
+  source?: "live" | "historical";
+  author?: string;
 }
 
 export interface SearchParams {
@@ -161,6 +163,8 @@ export interface AnalyticsOverview {
   confusion: { tp: number; fp: number; tn: number; fn: number };
   time_window_days: number;
   limit: number;
+  live_review_count?: number;
+  historical_review_count?: number;
 }
 
 export interface BrandStat {

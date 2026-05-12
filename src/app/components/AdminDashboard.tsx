@@ -133,7 +133,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
 
               <div className="bg-gray-50 rounded-xl p-5">
                 <p className="text-sm text-gray-600 mb-3">
-                  Recommended vs Not Recommended — last {overview.limit} reviews in {overview.time_window_days} days
+                  Recommended vs Not Recommended — historical CSV + live app reviews
                 </p>
                 <SplitBar
                   leftPercent={overview.recommend_rate_percent}
@@ -144,6 +144,14 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                   <p className="text-xs text-gray-500 mt-2">
                     Trust-weighted rate: <strong>{overview.recommend_rate_weighted_percent}%</strong>
                     {" "}— gives verified buyers 1.0 weight, non-buyer reviews 0.3.
+                  </p>
+                )}
+                {(overview.historical_review_count !== undefined || overview.live_review_count !== undefined) && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Mix: <strong>{overview.historical_review_count?.toLocaleString() ?? 0}</strong> historical CSV reviews
+                    {" + "}
+                    <strong>{overview.live_review_count?.toLocaleString() ?? 0}</strong> live app reviews
+                    {" (last "}{overview.time_window_days} days, capped at {overview.limit}).
                   </p>
                 )}
               </div>
